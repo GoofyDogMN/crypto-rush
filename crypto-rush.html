@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CRYPTO RUSH</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+  body {
+    background: #020817;
+    color: #F1F5F9;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+  button { cursor: pointer; border: none; font-family: inherit; }
+
+  @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 60% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.65; } }
+  @keyframes timerSpin { from { stroke-dashoffset: var(--dash-start); } to { stroke-dashoffset: var(--dash-end); } }
+
+  .screen { width: 100%; max-width: 420px; animation: slideUp 0.35s ease; }
+
+  /* ── MENU ── */
+  #menu { padding: 24px 16px; }
+  .menu-header { text-align: center; margin-bottom: 24px; }
+  .menu-header .icon { font-size: 52px; margin-bottom: 6px; }
+  .menu-header h1 {
+    font-size: 28px; font-weight: 900; letter-spacing: -1px;
+    background: linear-gradient(135deg, #6366F1, #A78BFA 50%, #38BDF8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .menu-header p { color: #64748B; font-size: 13px; margin-top: 4px; }
+
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+  .stat-card {
+    background: #0F172A; border-radius: 14px; padding: 14px 8px;
+    text-align: center; border: 1px solid #1E293B;
+  }
+  .stat-card .s-icon { font-size: 20px; margin-bottom: 3px; }
+  .stat-card .s-val { font-weight: 700; font-size: 15px; font-family: monospace; }
+  .stat-card .s-lbl { font-size: 11px; color: #64748B; margin-top: 2px; }
+
+  .xp-wrap { background: #0F172A; border-radius: 14px; padding: 14px 16px; margin-bottom: 20px; border: 1px solid #1E293B; }
+  .xp-row { display: flex; align-items: center; gap: 8px; }
+  .lv-badge {
+    background: linear-gradient(135deg, #6366F1, #8B5CF6);
+    border-radius: 8px; padding: 3px 10px;
+    font-family: monospace; font-weight: 700; font-size: 13px; color: #fff; white-space: nowrap;
+  }
+  .xp-bar-bg { flex: 1; height: 6px; background: #1E293B; border-radius: 3px; overflow: hidden; }
+  .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #6366F1, #A78BFA); border-radius: 3px; transition: width 0.5s ease; }
+  .xp-label { font-family: monospace; font-size: 11px; color: #64748B; white-space: nowrap; }
+
+  .coins-label { margin: 0 0 10px; font-size: 12px; color: #64748B; text-transform: uppercase; letter-spacing: 1px; }
+  .coins-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .coin-btn {
+    background: #0F172A; border-radius: 14px; padding: 14px 12px;
+    display: flex; align-items: center; gap: 10;
+    transition: transform 0.12s, box-shadow 0.12s;
+    color: #F1F5F9; text-align: left;
+  }
+  .coin-btn:active { transform: scale(0.96); }
+  .coin-icon {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; flex-shrink: 0;
+  }
+  .coin-name { font-weight: 700; font-size: 14px; }
+  .coin-sub { font-size: 11px; color: #64748B; }
+  .coin-locked { opacity: 0.45; pointer-events: none; }
+
+  /* ── GAME ── */
+  #game { display: none; }
+  .topbar {
+    background: #0A0F1A; border-bottom: 1px solid #1E293B;
+    padding: 11px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .back-btn {
+    background: #1E293B; border-radius: 8px; padding: 7px 13px;
+    color: #94A3B8; font-size: 13px; font-weight: 600;
+  }
+  .balance { display: flex; align-items: center; gap: 5px; font-family: monospace; font-weight: 700; font-size: 16px; }
+  .streak-badge {
+    display: flex; align-items: center; gap: 4px;
+    border-radius: 8px; padding: 4px 10px;
+    font-family: monospace; font-weight: 700; font-size: 13px;
+    animation: pulse 1.5s infinite;
+  }
+  .streak-badge.fire { background: rgba(251,146,60,.15); border: 1px solid #FB923C; color: #FB923C; }
+  .streak-badge.bolt { background: rgba(250,204,21,.1); border: 1px solid #FACC15; color: #FACC15; }
+
+  .game-body { padding: 14px 16px 24px; }
+
+  .coin-info-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .coin-info-left { display: flex; align-items: center; gap: 10px; }
+  .ci-symbol { font-weight: 700; font-size: 16px; }
+  .ci-price { font-family: monospace; font-size: 14px; color: #94A3B8; }
+
+  .chart-wrap {
+    background: #0A0F1A; border-radius: 14px; padding: 10px 4px 6px;
+    border: 1px solid #1E293B; margin-bottom: 14px; position: relative; overflow: hidden;
+  }
+  .chart-wrap svg { display: block; width: 100%; }
+  .chart-grid {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image: linear-gradient(rgba(30,41,59,0.3) 1px, transparent 1px);
+    background-size: 100% 35px;
+  }
+
+  /* timer circle */
+  .timer-wrap { position: relative; width: 52px; height: 52px; flex-shrink: 0; }
+  .timer-wrap svg { position: absolute; top: 0; left: 0; }
+  .timer-num {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: monospace; font-weight: 700; font-size: 17px;
+  }
+
+  /* result card */
+  .result-card {
+    border-radius: 14px; padding: 16px; margin-bottom: 14px;
+    text-align: center; animation: pop 0.3s ease;
+    display: none;
+  }
+  .result-card.win { background: rgba(74,222,128,.12); border: 1px solid #4ADE80; }
+  .result-card.loss { background: rgba(248,113,113,.12); border: 1px solid #F87171; }
+  .result-icon { font-size: 28px; margin-bottom: 4px; }
+  .result-title { font-weight: 800; font-size: 18px; }
+  .result-title.win { color: #4ADE80; }
+  .result-title.loss { color: #F87171; }
+  .result-change { font-size: 13px; color: #94A3B8; margin-top: 4px; }
+  .result-coins { font-family: monospace; font-weight: 700; font-size: 22px; margin-top: 8px; }
+  .result-coins.win { color: #4ADE80; }
+  .result-coins.loss { color: #F87171; }
+  .result-bonus { font-size: 12px; color: #FB923C; margin-top: 3px; }
+
+  /* bet row */
+  .bet-label { margin: 0 0 8px; font-size: 12px; color: #64748B; text-transform: uppercase; letter-spacing: 1px; }
+  .bets-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .bet-btn {
+    flex: 1; padding: 11px 0; border-radius: 10px;
+    font-weight: 700; font-size: 14px; font-family: monospace;
+    transition: all 0.12s; position: relative;
+    background: #0F172A; border: 1.5px solid #1E293B; color: #64748B;
+  }
+  .bet-btn.active { }
+  .bet-btn .bet-sub { font-size: 10px; margin-top: 2px; display: block; }
+  .bet-btn:disabled { opacity: 0.4; cursor: default; }
+
+  /* action buttons */
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .act-btn {
+    border-radius: 16px; padding: 18px 10px;
+    color: #fff; font-weight: 800; font-size: 21px;
+    transition: transform 0.1s, box-shadow 0.1s;
+    line-height: 1.3;
+  }
+  .act-btn:active { transform: scale(0.95); }
+  .act-btn .act-label { font-size: 13px; font-weight: 600; display: block; }
+  .act-btn.up {
+    background: linear-gradient(135deg, #16A34A, #4ADE80);
+    box-shadow: 0 4px 20px rgba(74,222,128,.3);
+  }
+  .act-btn.down {
+    background: linear-gradient(135deg, #DC2626, #F87171);
+    box-shadow: 0 4px 20px rgba(248,113,113,.3);
+  }
+  .act-btn:disabled { opacity: 0.35; box-shadow: none; cursor: default; }
+
+  .streak-hint { margin-top: 12px; text-align: center; font-size: 12px; color: #FB923C; font-style: italic; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ MENU ══════════ -->
+<div id="menu" class="screen">
+  <div class="menu-header">
+    <div class="icon">📈</div>
+    <h1>CRYPTO RUSH</h1>
+    <p>Угадай движение рынка</p>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><div class="s-icon">🪙</div><div class="s-val" id="stat-coins">500</div><div class="s-lbl">Монеты</div></div>
+    <div class="stat-card"><div class="s-icon">🏆</div><div class="s-val" id="stat-wins">0/0</div><div class="s-lbl">Победы</div></div>
+    <div class="stat-card"><div class="s-icon">🔥</div><div class="s-val" id="stat-best">0</div><div class="s-lbl">Рекорд</div></div>
+  </div>
+
+  <div class="xp-wrap">
+    <div class="xp-row">
+      <div class="lv-badge" id="menu-lv">LV1</div>
+      <div class="xp-bar-bg"><div class="xp-bar-fill" id="menu-xp-fill" style="width:0%"></div></div>
+      <div class="xp-label" id="menu-xp-lbl">0/100</div>
+    </div>
+  </div>
+
+  <p class="coins-label">Выбери монету</p>
+  <div class="coins-grid" id="coins-grid"></div>
+</div>
+
+<!-- ══════════ GAME ══════════ -->
+<div id="game" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="goMenu()">← Меню</button>
+    <div class="balance"><span>🪙</span><span id="g-coins">500</span></div>
+    <div id="streak-el" style="display:none"></div>
+  </div>
+
+  <div class="game-body">
+    <div class="xp-wrap" style="margin-bottom:14px">
+      <div class="xp-row">
+        <div class="lv-badge" id="g-lv">LV1</div>
+        <div class="xp-bar-bg"><div class="xp-bar-fill" id="g-xp-fill" style="width:0%"></div></div>
+        <div class="xp-label" id="g-xp-lbl">0/100</div>
+      </div>
+    </div>
+
+    <div class="coin-info-row">
+      <div class="coin-info-left">
+        <div class="coin-icon" id="g-icon"></div>
+        <div>
+          <div class="ci-symbol" id="g-symbol">BTC/USDT</div>
+          <div class="ci-price" id="g-price">$0</div>
+        </div>
+      </div>
+      <div class="timer-wrap" id="timer-wrap">
+        <svg width="52" height="52" viewBox="0 0 52 52">
+          <circle cx="26" cy="26" r="22" fill="none" stroke="#1E293B" stroke-width="4"/>
+          <circle id="timer-arc" cx="26" cy="26" r="22" fill="none"
+            stroke="#4ADE80" stroke-width="4" stroke-linecap="round"
+            stroke-dasharray="138.2" stroke-dashoffset="0"
+            transform="rotate(-90 26 26)"
+            style="transition: stroke-dashoffset 1s linear, stroke 0.3s"/>
+        </svg>
+        <div class="timer-num" id="timer-num">10</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <svg id="chart-svg" viewBox="0 0 380 140" preserveAspectRatio="none"></svg>
+      <div class="chart-grid"></div>
+    </div>
+
+    <div class="result-card" id="result-card">
+      <div class="result-icon" id="r-icon"></div>
+      <div class="result-title" id="r-title"></div>
+      <div class="result-change" id="r-change"></div>
+      <div class="result-coins" id="r-coins"></div>
+      <div class="result-bonus" id="r-bonus"></div>
+    </div>
+
+    <div id="bet-section">
+      <p class="bet-label">Ставка (база: 100 🪙)</p>
+      <div class="bets-row" id="bets-row"></div>
+      <div class="actions">
+        <button class="act-btn up" id="btn-up" onclick="choose('up')">📈<span class="act-label">ВВЕРХ</span></button>
+        <button class="act-btn down" id="btn-down" onclick="choose('down')">📉<span class="act-label">ВНИЗ</span></button>
+      </div>
+      <div class="streak-hint" id="streak-hint" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────
+const COINS = [
+  { id:'btc', symbol:'BTC', name:'Bitcoin',  emoji:'₿',  color:'#F7931A', startPrice:65000,    unlockLv:1 },
+  { id:'eth', symbol:'ETH', name:'Ethereum', emoji:'Ξ',  color:'#627EEA', startPrice:3200,     unlockLv:1 },
+  { id:'sol', symbol:'SOL', name:'Solana',   emoji:'◎',  color:'#9945FF', startPrice:180,      unlockLv:3 },
+  { id:'doge',symbol:'DOGE',name:'Dogecoin', emoji:'Ð',  color:'#C2A633', startPrice:0.12,     unlockLv:5 },
+  { id:'pepe',symbol:'PEPE',name:'PEPE',     emoji:'🐸', color:'#00B300', startPrice:0.000012, unlockLv:8 },
+  { id:'shib',symbol:'SHIB',name:'Shiba Inu',emoji:'🐕', color:'#E3930C', startPrice:0.000025, unlockLv:12},
+];
+const BETS = [
+  { label:'×1',  mult:1,  color:'#4ADE80', unlockLv:1 },
+  { label:'×2',  mult:2,  color:'#FACC15', unlockLv:1 },
+  { label:'×5',  mult:5,  color:'#FB923C', unlockLv:1 },
+  { label:'×10', mult:10, color:'#F87171', unlockLv:4 },
+];
+const TIME_LIMIT = 10;
+const CIRC = 2 * Math.PI * 22; // 138.2
+
+let state = {
+  level:1, xp:0, coins:500, streak:0, bestStreak:0,
+  wins:0, games:0,
+  history:[], currentPrice:0,
+  activeCoin: COINS[0],
+  selectedBet: BETS[0],
+  phase: 'betting', // betting | resolving
+  timerVal: TIME_LIMIT,
+  timerInterval: null,
+};
+
+// ── HELPERS ────────────────────────────────────────────
+function fmtPrice(coin, p) {
+  if (!p) return '—';
+  if (p < 0.001)  return '$' + p.toFixed(8);
+  if (p < 1)      return '$' + p.toFixed(4);
+  if (p < 100)    return '$' + p.toFixed(2);
+  return '$' + p.toLocaleString('en-US', {maximumFractionDigits:0});
+}
+
+function genCandle(prev) {
+  const change = (Math.random() - 0.48) * 0.06;
+  const open  = prev.close;
+  const close = open * (1 + change);
+  const high  = Math.max(open, close) * (1 + Math.random() * 0.015);
+  const low   = Math.min(open, close) * (1 - Math.random() * 0.015);
+  return { open, close, high, low, bull: close >= open };
+}
+
+function genHistory(startPrice, n=32) {
+  const h = []; let cur = { close: startPrice };
+  for (let i=0;i<n;i++) { cur = genCandle(cur); h.push(cur); }
+  return h;
+}
+
+function xpNeeded(lv) { return lv * 100; }
+
+// ── RENDER ─────────────────────────────────────────────
+function renderMenu() {
+  // stats
+  document.getElementById('stat-coins').textContent = state.coins.toLocaleString();
+  document.getElementById('stat-wins').textContent  = state.wins + '/' + state.games;
+  document.getElementById('stat-best').textContent  = state.bestStreak + '🔥';
+  // xp
+  updateXPUI('menu');
+  // coins grid
+  const grid = document.getElementById('coins-grid');
+  grid.innerHTML = '';
+  COINS.forEach(c => {
+    const locked = c.unlockLv > state.level;
+    const div = document.createElement('div');
+    div.className = 'coin-btn' + (locked ? ' coin-locked' : '');
+    div.style.border = `1px solid ${locked ? '#1E293B' : c.color + '33'}`;
+    div.innerHTML = `
+      <div class="coin-icon" style="background:${locked?'#1E293B':c.color+'22'};border:1px solid ${locked?'#1E293B':c.color+'44'}">
+        ${locked ? '🔒' : c.emoji}
+      </div>
+      <div>
+        <div class="coin-name">${c.symbol}</div>
+        <div class="coin-sub">${locked ? 'LV ' + c.unlockLv : c.name}</div>
+      </div>`;
+    if (!locked) div.addEventListener('click', () => startGame(c));
+    grid.appendChild(div);
+  });
+}
+
+function updateXPUI(ctx) {
+  const pct = Math.min(100, (state.xp / xpNeeded(state.level)) * 100);
+  const suffix = ctx === 'menu' ? 'menu' : 'g';
+  if (ctx === 'menu') {
+    document.getElementById('menu-lv').textContent       = 'LV' + state.level;
+    document.getElementById('menu-xp-fill').style.width = pct + '%';
+    document.getElementById('menu-xp-lbl').textContent   = state.xp + '/' + xpNeeded(state.level);
+  } else {
+    document.getElementById('g-lv').textContent       = 'LV' + state.level;
+    document.getElementById('g-xp-fill').style.width  = pct + '%';
+    document.getElementById('g-xp-lbl').textContent    = state.xp + '/' + xpNeeded(state.level);
+  }
+}
+
+function renderChart() {
+  const svg = document.getElementById('chart-svg');
+  const W=380, H=140, pad={t:8,r:6,b:8,l:6};
+  const cw = W - pad.l - pad.r;
+  const ch = H - pad.t - pad.b;
+  const h = state.history;
+  const prices = h.flatMap(c=>[c.high,c.low]);
+  const min = Math.min(...prices), max = Math.max(...prices);
+  const range = max - min || 1;
+  const cw2 = cw / h.length;
+  const candleW = Math.max(4, cw2 - 2);
+  const py = p => pad.t + ch - ((p - min) / range) * ch;
+  const px = i => pad.l + (i + 0.5) * cw2;
+
+  let svgStr = '';
+  h.forEach((c, i) => {
+    const x = px(i);
+    const yO = py(c.open), yC = py(c.close);
+    const yH = py(c.high), yL = py(c.low);
+    const col = c.bull ? '#4ADE80' : '#F87171';
+    const bodyTop = Math.min(yO, yC);
+    const bodyH = Math.max(2, Math.abs(yC - yO));
+    svgStr += `<line x1="${x}" y1="${yH}" x2="${x}" y2="${yL}" stroke="${col}" stroke-width="1" opacity="0.65"/>`;
+    svgStr += `<rect x="${x - candleW/2}" y="${bodyTop}" width="${candleW}" height="${bodyH}" fill="${col}" rx="1"/>`;
+  });
+  svg.innerHTML = svgStr;
+}
+
+function renderBets() {
+  const row = document.getElementById('bets-row');
+  row.innerHTML = '';
+  BETS.forEach(b => {
+    const locked = b.unlockLv > state.level;
+    const active = state.selectedBet.mult === b.mult;
+    const btn = document.createElement('button');
+    btn.className = 'bet-btn' + (active ? ' active' : '');
+    btn.disabled = locked;
+    btn.style.borderColor = active ? b.color : locked ? '#1E293B' : '#1E293B';
+    btn.style.color = locked ? '#334155' : active ? b.color : '#64748B';
+    btn.style.background = active ? b.color + '22' : '#0F172A';
+    btn.innerHTML = locked
+      ? `🔒<span class="bet-sub">LV${b.unlockLv}</span>`
+      : `${b.label}<span class="bet-sub" style="color:${active?b.color:'#475569'}">${active ? 100*b.mult+' 🪙' : ''}</span>`;
+    if (!locked) btn.addEventListener('click', () => {
+      state.selectedBet = b;
+      renderBets();
+    });
+    row.appendChild(btn);
+  });
+}
+
+function renderStreak() {
+  const el = document.getElementById('streak-el');
+  if (state.streak < 2) { el.style.display='none'; return; }
+  el.style.display = 'flex';
+  const fire = state.streak >= 5;
+  el.innerHTML = `<div class="streak-badge ${fire?'fire':'bolt'}">${fire?'🔥':'⚡'} ${state.streak}x STREAK</div>`;
+  const hint = document.getElementById('streak-hint');
+  if (state.streak >= 3) {
+    hint.style.display='block';
+    hint.textContent = `🔥 Стрик ×${state.streak} — бонус +20% к выигрышу!`;
+  } else { hint.style.display='none'; }
+}
+
+function updateTimer() {
+  const arc   = document.getElementById('timer-arc');
+  const num   = document.getElementById('timer-num');
+  const pct   = state.timerVal / TIME_LIMIT;
+  const offset = CIRC * (1 - pct);
+  arc.style.strokeDashoffset = offset;
+  arc.style.stroke = pct > 0.5 ? '#4ADE80' : pct > 0.25 ? '#FACC15' : '#F87171';
+  num.style.color  = pct > 0.5 ? '#4ADE80' : pct > 0.25 ? '#FACC15' : '#F87171';
+  num.textContent  = state.timerVal;
+}
+
+// ── SCREENS ────────────────────────────────────────────
+function goMenu() {
+  clearInterval(state.timerInterval);
+  renderMenu();
+  document.getElementById('game').style.display='none';
+  document.getElementById('menu').style.display='block';
+  document.getElementById('menu').style.animation='none';
+  requestAnimationFrame(()=>{ document.getElementById('menu').style.animation='slideUp 0.35s ease'; });
+}
+
+function startGame(coin) {
+  state.activeCoin = coin;
+  state.history = genHistory(coin.startPrice);
+  state.currentPrice = state.history[state.history.length-1].close;
+  state.phase = 'betting';
+  state.timerVal = TIME_LIMIT;
+
+  document.getElementById('menu').style.display='none';
+  document.getElementById('game').style.display='block';
+  document.getElementById('game').style.animation='none';
+  requestAnimationFrame(()=>{ document.getElementById('game').style.animation='slideUp 0.3s ease'; });
+
+  // coin header
+  const iconEl = document.getElementById('g-icon');
+  iconEl.textContent = coin.emoji;
+  iconEl.style.background = coin.color + '22';
+  iconEl.style.border = `1px solid ${coin.color}44`;
+  document.getElementById('g-symbol').textContent = coin.symbol + '/USDT';
+  document.getElementById('g-price').textContent  = fmtPrice(coin, state.currentPrice);
+  document.getElementById('g-coins').textContent  = state.coins.toLocaleString();
+
+  updateXPUI('game');
+  renderChart();
+  renderBets();
+  renderStreak();
+  hideResult();
+  enableActions();
+  startTimer();
+}
+
+// ── TIMER ──────────────────────────────────────────────
+function startTimer() {
+  clearInterval(state.timerInterval);
+  state.timerVal = TIME_LIMIT;
+  updateTimer();
+  state.timerInterval = setInterval(() => {
+    state.timerVal--;
+    updateTimer();
+    if (state.timerVal <= 0) { clearInterval(state.timerInterval); choose(null); }
+  }, 1000);
+}
+
+// ── CHOICE ─────────────────────────────────────────────
+function choose(dir) {
+  if (state.phase !== 'betting') return;
+  clearInterval(state.timerInterval);
+  state.phase = 'resolving';
+  disableActions();
+
+  const last = state.history[state.history.length-1];
+  const next = genCandle(last);
+  const actualDir = next.close >= next.open ? 'up' : 'down';
+  const won = dir !== null && dir === actualDir;
+  const changePct = ((next.close - next.open) / next.open) * 100;
+  const bet = 100 * state.selectedBet.mult;
+  const earned = won ? bet : -Math.round(bet * 0.7);
+  const bonus  = (won && state.streak >= 3) ? Math.round(earned * 0.2) : 0;
+  const total  = earned + bonus;
+
+  // update history
+  state.history = [...state.history.slice(1), next];
+  state.currentPrice = next.close;
+  document.getElementById('g-price').textContent = fmtPrice(state.activeCoin, state.currentPrice);
+  renderChart();
+
+  // state updates
+  state.games++;
+  if (won) { state.wins++; state.streak++; } else { state.streak=0; }
+  if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+  state.coins = Math.max(0, state.coins + total);
+  document.getElementById('g-coins').textContent = state.coins.toLocaleString();
+
+  if (won) {
+    const newXp = state.xp + 30 + (state.streak >= 3 ? 15 : 0);
+    const need  = xpNeeded(state.level);
+    if (newXp >= need) { state.level++; state.xp = newXp - need; }
+    else { state.xp = newXp; }
+  }
+  updateXPUI('game');
+  renderStreak();
+
+  // show result
+  showResult(won, dir, actualDir, changePct, total, bonus);
+
+  setTimeout(() => {
+    hideResult();
+    state.phase = 'betting';
+    enableActions();
+    renderBets();
+    startTimer();
+  }, 2300);
+}
+
+function showResult(won, dir, actual, changePct, total, bonus) {
+  const card = document.getElementById('result-card');
+  card.style.display = 'block';
+  card.className = 'result-card ' + (won ? 'win' : 'loss');
+  document.getElementById('bet-section').style.opacity = '0.3';
+
+  document.getElementById('r-icon').textContent  = dir===null ? '⏰' : won ? '✅' : '❌';
+  const titleEl = document.getElementById('r-title');
+  titleEl.textContent  = dir===null ? 'Время вышло!' : won ? 'ПРАВИЛЬНО!' : 'НЕВЕРНО!';
+  titleEl.className    = 'result-title ' + (won ? 'win' : 'loss');
+  document.getElementById('r-change').textContent = (actual==='up' ? '📈 +' : '📉 ') + Math.abs(changePct).toFixed(2) + '%';
+  const coinsEl = document.getElementById('r-coins');
+  coinsEl.textContent  = (total>=0?'+':'') + total + ' 🪙';
+  coinsEl.className    = 'result-coins ' + (total>=0 ? 'win' : 'loss');
+  const bonusEl = document.getElementById('r-bonus');
+  if (bonus > 0) { bonusEl.textContent = '🔥 Бонус за стрик: +' + bonus; bonusEl.style.display='block'; }
+  else { bonusEl.style.display='none'; }
+}
+
+function hideResult() {
+  document.getElementById('result-card').style.display = 'none';
+  document.getElementById('bet-section').style.opacity = '1';
+}
+
+function enableActions() {
+  document.getElementById('btn-up').disabled   = false;
+  document.getElementById('btn-down').disabled = false;
+  document.getElementById('timer-wrap').style.display = 'block';
+}
+function disableActions() {
+  document.getElementById('btn-up').disabled   = true;
+  document.getElementById('btn-down').disabled = true;
+  document.getElementById('timer-wrap').style.display = 'none';
+}
+
+// ── BOOT ───────────────────────────────────────────────
+renderMenu();
+</script>
+</body>
+</html>
